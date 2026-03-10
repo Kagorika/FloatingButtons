@@ -1,6 +1,6 @@
 package com.floatingbuttons;
 
-import android.app.*;
+import android.app.Service;
 import android.content.Intent;
 import android.graphics.*;
 import android.graphics.drawable.GradientDrawable;
@@ -12,15 +12,12 @@ public class FloatingButtonService extends Service {
     public static boolean isRunning = false;
     private WindowManager windowManager;
     private View floatingView;
-    private static final String CHANNEL_ID = "FloatChannel";
 
     @Override
     public void onCreate() {
         super.onCreate();
         isRunning = true;
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        createNotificationChannel();
-        startForeground(1, buildNotification());
         createFloatingView();
     }
 
@@ -100,21 +97,6 @@ public class FloatingButtonService extends Service {
                     "540", up?"800":"400", "540", up?"400":"800", "300"});
             } catch (Exception e) { e.printStackTrace(); }
         }).start();
-    }
-
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel ch = new NotificationChannel(CHANNEL_ID, "Floating Buttons", NotificationManager.IMPORTANCE_LOW);
-            getSystemService(NotificationManager.class).createNotificationChannel(ch);
-        }
-    }
-
-    private Notification buildNotification() {
-        Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ?
-            new Notification.Builder(this, CHANNEL_ID) : new Notification.Builder(this);
-        return b.setContentTitle("Floating Buttons Active")
-            .setSmallIcon(android.R.drawable.ic_media_ff)
-            .setOngoing(true).build();
     }
 
     @Override public int onStartCommand(Intent i, int f, int s) { return START_STICKY; }
