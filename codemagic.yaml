@@ -3,7 +3,11 @@ workflows:
     name: Android Build
     instance_type: mac_mini_m1
     scripts:
-      - name: Build APK
-        script: ./gradlew assembleDebug
+      - name: Set up Gradle
+        script: |
+          curl -L https://services.gradle.org/distributions/gradle-8.2-bin.zip -o gradle.zip
+          unzip gradle.zip
+          export PATH=$PATH:$(pwd)/gradle-8.2/bin
+          gradle assembleDebug
     artifacts:
       - app/build/outputs/**/*.apk
