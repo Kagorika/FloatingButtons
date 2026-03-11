@@ -91,15 +91,14 @@ public class FloatingButtonService extends Service {
     }
 
     private void scroll(boolean up) {
-        // Use AccessibilityService if available (best method)
-        if (ScrollAccessibilityService.instance != null) {
-            ScrollAccessibilityService.instance.performScroll(up);
-            return;
+        ScrollAccessibilityService svc = ScrollAccessibilityService.instance;
+        if (svc != null) {
+            svc.performScroll(up);
+        } else {
+            Toast.makeText(this,
+                "Instance null - restart app!",
+                Toast.LENGTH_SHORT).show();
         }
-        // Fallback toast if accessibility not enabled
-        android.widget.Toast.makeText(this,
-            "Please enable Floating Buttons in Accessibility Settings!",
-            android.widget.Toast.LENGTH_LONG).show();
     }
 
     @Override public int onStartCommand(Intent i, int f, int s) { return START_STICKY; }
