@@ -129,9 +129,15 @@ public class FloatingButtonService extends Service {
     }
 
     private void doScroll(boolean up) {
+        // Try direct instance first (same process)
         if (ScrollAccessibilityService.instance != null) {
             ScrollAccessibilityService.instance.performScroll(up);
+            return;
         }
+        // Fallback: send broadcast (works across MIUI separate processes)
+        Intent intent = new Intent(ScrollAccessibilityService.ACTION_SCROLL);
+        intent.putExtra(ScrollAccessibilityService.EXTRA_UP, up);
+        sendBroadcast(intent);
     }
 
     @Override public int onStartCommand(Intent i, int f, int s) { return START_STICKY; }
