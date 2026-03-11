@@ -2,6 +2,7 @@ package com.floatingbuttons;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
+import android.content.Intent;
 import android.graphics.Path;
 import android.os.Build;
 import android.view.accessibility.AccessibilityEvent;
@@ -9,11 +10,20 @@ import android.view.accessibility.AccessibilityEvent;
 public class ScrollAccessibilityService extends AccessibilityService {
 
     public static ScrollAccessibilityService instance;
+    public static final String ACTION_SCROLL = "com.floatingbuttons.SCROLL";
+    public static final String EXTRA_UP = "scroll_up";
 
     @Override
     public void onServiceConnected() {
         super.onServiceConnected();
         instance = this;
+    }
+
+    // Called by FloatingButtonService via broadcast
+    public static void requestScroll(boolean up) {
+        if (instance != null) {
+            instance.performScroll(up);
+        }
     }
 
     @Override
@@ -42,14 +52,10 @@ public class ScrollAccessibilityService extends AccessibilityService {
         path.moveTo(screenWidth, fromY);
         path.lineTo(screenWidth, toY);
 
-        GestureDescription.Builder builder = new GestureDescription.Builder();
-        builder.addStroke(new GestureDescription.StrokeDescription(path, 0, 300));
+        GestureDescription gesture = new GestureDescription.Builder()
+            .addStroke(new GestureDescription.StrokeDescription(path, 0, 400))
+            .build();
 
-        dispatchGesture(builder.build(), new GestureResultCallback() {
-            @Override
-            public void onCompleted(GestureDescription gestureDescription) {}
-            @Override
-            public void onCancelled(GestureDescription gestureDescription) {}
-        }, null);
+        dispatchGesture(gesture, null, null);
     }
 }
