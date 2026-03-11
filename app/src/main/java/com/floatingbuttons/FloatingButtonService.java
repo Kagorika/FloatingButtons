@@ -14,6 +14,9 @@ public class FloatingButtonService extends Service {
     private WindowManager windowManager;
     private View floatingView;
     private Vibrator vibrator;
+    private WindowManager.LayoutParams params;
+    private int initialX, initialY;
+    private float initialTouchX, initialTouchY;
 
     @Override
     public void onCreate() {
@@ -25,41 +28,13 @@ public class FloatingButtonService extends Service {
     }
 
     private void createFloatingView() {
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setGravity(Gravity.CENTER);
-        container.setPadding(20, 20, 20, 20);
-
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(Color.parseColor("#CC1A1A2E"));
-        bg.setCornerRadius(40);
-        container.setBackground(bg);
-
-        TextView upBtn = makeButton("▲");
-        TextView downBtn = makeButton("▼");
-
-        // Separate click listeners on each button
-        upBtn.setOnClickListener(v -> {
-            vibrate();
-            scroll(true);
-            Toast.makeText(this, "▲", Toast.LENGTH_SHORT).show();
-        });
-
-        downBtn.setOnClickListener(v -> {
-            vibrate();
-            scroll(false);
-            Toast.makeText(this, "▼", Toast.LENGTH_SHORT).show();
-        });
-
-        container.addView(upBtn);
-        container.addView(downBtn);
-
         int type = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ?
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY :
             WindowManager.LayoutParams.TYPE_PHONE;
 
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-            150, WindowManager.LayoutParams.WRAP_CONTENT,
+        params = new WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT);
@@ -67,87 +42,96 @@ public class FloatingButtonService extends Service {
         params.x = 20;
         params.y = 300;
 
-        // Fixed touch listener - properly separates drag from click
-        container.setOnTouchListener(new View.OnTouchListener() {
-            int ix, iy;
-            float tx, ty;
-            boolean drag;
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setGravity(Gravity.CENTER);
+        container.setPadding(16, 16, 16, 16);
 
-            public boolean onTouch(View v, MotionEvent e) {
-                WindowManager.LayoutParams lp =
-                    (WindowManager.LayoutParams) floatingView.getLayoutParams();
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Color.parseColor("#DD1A1A2E"));
+        bg.setCornerRadius(50);
+        container.setBackground(bg);
 
-                switch (e.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        ix = lp.x;
-                        iy = lp.y;
-                        tx = e.getRawX();
-                        ty = e.getRawY();
-                        drag = false;
-                        return false; // let child views get the event first
+        Button upBtn = new Button(this);
+        upBtn.setText("▲");
+        upBtn.setTextSize(22);
+        upBtn.setTextColor(Color.WHITE);
+        upBtn.setAllCaps(false);
+        styleButton(upBtn);
 
-                    case MotionEvent.ACTION_MOVE:
-                        int dx = (int)(e.getRawX() - tx);
-                        int dy = (int)(e.getRawY() - ty);
-                        if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
-                            drag = true;
-                        }
-                        if (drag) {
-                            lp.x = ix - dx;
-                            lp.y = iy + dy;
-                            windowManager.updateViewLayout(floatingView, lp);
-                            return true;
-                        }
-                        return false;
+        Button downBtn = new Button(this);
+        downBtn.setText("▼");
+        downBtn.setTextSize(22);
+        downBtn.setTextColor(Color.WHITE);
+        downBtn.setAllCaps(false);
+        styleButton(downBtn);
 
-                    case MotionEvent.ACTION_UP:
-                        return drag; // only consume if was dragging
-                }
-                return false;
+        upBtn.setOnClickListener(v -> {
+            doVibrate();
+            Toast.makeText(FloatingButtonService.this, "▲ UP", Toast.LENGTH_SHORT).show();
+            doScroll(true);
+        });
+
+        downBtn.setOnClickListener(v -> {
+            doVibrate();
+            Toast.makeText(FloatingButtonService.this, "▼ DOWN", Toast.LENGTH_SHORT).show();
+            doScroll(false);
+        });
+
+        container.addView(upBtn);
+        container.addView(downBtn);
+
+        container.setOnTouchListener((v, event) -> {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    initialX = params.x;
+                    initialY = params.y;
+                    initialTouchX = event.getRawX();
+                    initialTouchY = event.getRawY();
+                    return false;
+                case MotionEvent.ACTION_MOVE:
+                    float dx = event.getRawX() - initialTouchX;
+                    float dy = event.getRawY() - initialTouchY;
+                    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                        params.x = initialX - (int) dx;
+                        params.y = initialY + (int) dy;
+                        windowManager.updateViewLayout(floatingView, params);
+                        return true;
+                    }
+                    return false;
             }
+            return false;
         });
 
         floatingView = container;
         windowManager.addView(floatingView, params);
     }
 
-    private void vibrate() {
-        if (vibrator != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createOneShot(
-                    50, VibrationEffect.DEFAULT_AMPLITUDE));
-            } else {
-                vibrator.vibrate(50);
-            }
-        }
-    }
-
-    private TextView makeButton(String text) {
-        TextView btn = new TextView(this);
-        btn.setText(text);
-        btn.setTextSize(24);
-        btn.setTextColor(Color.WHITE);
-        btn.setGravity(Gravity.CENTER);
-        btn.setPadding(20, 20, 20, 20);
-        btn.setClickable(true);
+    private void styleButton(Button btn) {
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.OVAL);
         bg.setColor(Color.parseColor("#CC4A90D9"));
         btn.setBackground(bg);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(100, 100);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(120, 120);
         lp.setMargins(0, 8, 0, 8);
         btn.setLayoutParams(lp);
-        return btn;
+        btn.setPadding(0, 0, 0, 0);
     }
 
-    private void scroll(boolean up) {
-        // Try static instance first
+    private void doVibrate() {
+        if (vibrator == null) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(
+                60, VibrationEffect.DEFAULT_AMPLITUDE));
+        } else {
+            vibrator.vibrate(60);
+        }
+    }
+
+    private void doScroll(boolean up) {
         if (ScrollAccessibilityService.instance != null) {
             ScrollAccessibilityService.instance.performScroll(up);
-            return;
         }
-        // Try requesting via static method as fallback
-        ScrollAccessibilityService.requestScroll(up);
     }
 
     @Override public int onStartCommand(Intent i, int f, int s) { return START_STICKY; }
