@@ -42,13 +42,13 @@ public class FloatingButtonService extends Service {
         upBtn.setOnClickListener(v -> {
             vibrate();
             scroll(true);
-            Toast.makeText(this, "UP", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "▲", Toast.LENGTH_SHORT).show();
         });
 
         downBtn.setOnClickListener(v -> {
             vibrate();
             scroll(false);
-            Toast.makeText(this, "DOWN", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "▼", Toast.LENGTH_SHORT).show();
         });
 
         container.addView(upBtn);
@@ -141,10 +141,13 @@ public class FloatingButtonService extends Service {
     }
 
     private void scroll(boolean up) {
-        ScrollAccessibilityService svc = ScrollAccessibilityService.instance;
-        if (svc != null) {
-            svc.performScroll(up);
+        // Try static instance first
+        if (ScrollAccessibilityService.instance != null) {
+            ScrollAccessibilityService.instance.performScroll(up);
+            return;
         }
+        // Try requesting via static method as fallback
+        ScrollAccessibilityService.requestScroll(up);
     }
 
     @Override public int onStartCommand(Intent i, int f, int s) { return START_STICKY; }
