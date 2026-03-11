@@ -2,7 +2,10 @@ package com.floatingbuttons;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Path;
 import android.os.Build;
 import android.view.accessibility.AccessibilityEvent;
@@ -13,29 +16,40 @@ public class ScrollAccessibilityService extends AccessibilityService {
     public static final String ACTION_SCROLL = "com.floatingbuttons.SCROLL";
     public static final String EXTRA_UP = "scroll_up";
 
+    private BroadcastReceiver scrollReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            boolean up = intent.getBooleanExtra(EXTRA_UP, true);
+            performScroll(up);
+        }
+    };
+
     @Override
     public void onServiceConnected() {
         super.onServiceConnected();
         instance = this;
+        IntentFilter filter = new IntentFilter(ACTION_SCROLL);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(scrollReceiver, filter, Context.RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(scrollReceiver, filter);
+        }
     }
 
-    // Called by FloatingButtonService via broadcast
     public static void requestScroll(boolean up) {
         if (instance != null) {
             instance.performScroll(up);
         }
     }
 
-    @Override
-    public void onAccessibilityEvent(AccessibilityEvent event) {}
-
-    @Override
-    public void onInterrupt() {}
+    @Override public void onAccessibilityEvent(AccessibilityEvent event) {}
+    @Override public void onInterrupt() {}
 
     @Override
     public void onDestroy() {
         super.onDestroy();
         instance = null;
+        try { unregisterReceiver(scrollReceiver); } catch (Exception e) {}
     }
 
     public void performScroll(boolean scrollUp) {
